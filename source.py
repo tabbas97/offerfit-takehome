@@ -1,76 +1,36 @@
+"""
+Instructions:
+
+- Fill in the methods of the DataModeler class to produce the same printed results
+  as in the comments labeled '<Expected Output>' in the second half of the file.
+- The DataModeler should predict the 'outcome' from the columns 'amount' and 'transaction date.'
+  Your model should ignore the 'customer_id' column.
+- For the modeling methods `fit`, `predict` and `model_summary` you can use any appropriate method.
+  Try to get 100% accuracy on both training and test, as indicated in the output.
+- Please feel free to import any popular libraries of choice for your solution! 
+- Your solution will be judged on both correctness and code quality.
+- Good luck, and have fun!
+
+"""
+
 from __future__ import annotations
-import joblib
 import numpy as np
 import pandas as pd
-from datetime import datetime, timezone
-from sklearn.discriminant_analysis import StandardScaler
-from sklearn.ensemble import AdaBoostClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.pipeline import make_pipeline
+
 
 class DataModeler:
-    
     def __init__(self, sample_df: pd.DataFrame):
         '''
         Initialize the DataModeler as necessary.
         '''
         # ** Your code here **
-        self.source_df : pd.DataFrame = sample_df.copy(deep=True) # Preserve the original data model
-        self.train_df : pd.DataFrame = None
 
-    def prepare_data(self, oos_df: pd.DataFrame = None, allow_implicit_data_conversions = True) -> pd.DataFrame:
+    def prepare_data(self, oos_df: pd.DataFrame = None) -> pd.DataFrame:
         '''
         Prepare a dataframe so it contains only the columns to model and having suitable types.
         If the argument is None, work on the training data passed in the constructor.
         '''
         # ** Your code here **
-        if oos_df is None:
-            # Assuming all the columns in the sample data are to be used for modeling
-            # Excluding the columns with object data type
-            self.train_df = self.source_df.copy(deep=True)
-            
-            # Extract labels from the training data
-            self.train_labels = self.train_df['outcome'].copy()
-            
-            # Drop the outcome column from the training data 
-            self.train_df.drop(columns=['outcome'], inplace=True)
-            
-            # Drop the customer_id since that is not a feature
-            self.train_df.drop(columns=['customer_id'], inplace=True)
-            
-            # Convert the transaction_date to a numeric value
-            self.train_df['transaction_date'] = self.train_df.transaction_date.apply(
-                lambda x: datetime.strptime(x, '%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp()*10**9 if x is not None else None
-                )
-            
-        else:
-            
-            oos_copy = oos_df.copy(deep=True) # Avoid any data leakage back to the source dataframe
-            if allow_implicit_data_conversions:
-                # Allow conversion only for amount column -> can come from any lower precision to float64
-                if 'amount' in oos_copy and pd.api.types.is_numeric_dtype(oos_copy['amount']):
-                    oos_copy['amount'] = oos_copy['amount'].astype(np.float64)
-            
-            # Validate the data types of the columns
-            # Check if the columns are in the dataframe and are of the right data type
-            for req_col in ['amount', 'transaction_date']:
-                
-                if req_col not in oos_copy:
-                    raise ValueError(f"Column '{req_col}' is missing in the dataframe")
-                
-                if oos_copy[req_col].dtype != self.source_df[req_col].dtype:
-                    raise ValueError(f"Column '{req_col}' is not of the right data type")
-            
-            # Convert the transaction_date to a numeric value
-            oos_copy['transaction_date'] = oos_copy.transaction_date.apply(
-                lambda x: datetime.strptime(x, '%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp()*10**9 if x is not None else None
-                )
-            
-            # Drop the customer_id since that is not a feature
-            if 'customer_id' in oos_copy:
-                oos_copy.drop(columns=['customer_id'], inplace=True)
-                
-            return oos_copy
 
     def impute_missing(self, oos_df: pd.DataFrame = None) -> pd.DataFrame:
         '''
@@ -79,14 +39,6 @@ class DataModeler:
         Hint: Watch out for data leakage in your solution.
         '''
         # ** Your code here **
-        if oos_df is None:
-            # Impute missing values in the training data
-            self.train_df.fillna(self.train_df.mean(), inplace=True)
-        else:
-            # Impute missing values in the out-of-sample data
-            oos_copy = oos_df.copy(deep=True)
-            oos_copy.fillna(oos_copy.mean(), inplace=True)
-            return oos_copy
 
     def fit(self) -> None:
         '''
@@ -94,25 +46,12 @@ class DataModeler:
         been prepared by the functions prepare_data and impute_missing
         '''
         # ** Your code here **
-        # Fit the model on the training data
-        self.model = make_pipeline(
-            # StandardScaler(),             # A scaling step is not necessary for the AdaBoostClassifier nor the GaussianNB 
-                                            # since they are not sensitive to the scale of the features like KNN or SVM
-            # GaussianNB(),                 # -> Only achieved 70% accuracy
-            AdaBoostClassifier(n_estimators=10, random_state=0)
-            )
-        # self.model = GaussianNB()
-        self.model.fit(self.train_df, self.train_labels)
 
     def model_summary(self) -> str:
         '''
         Create a short summary of the model you have fit.
         '''
         # ** Your code here **
-        return str({
-            'model_type': 'AdaBoostClassifier',
-            'model' : self.model
-        })
 
     def predict(self, oos_df: pd.DataFrame = None) -> pd.Series[bool]:
         '''
@@ -121,19 +60,12 @@ class DataModeler:
         If the argument is None, work on the training data passed in the constructor.
         '''
         # ** Your code here **
-        if oos_df is None:
-            # Predict on the training data
-            return self.model.predict(self.train_df)
-        else:
-            # Predict on the out-of-sample data
-            return self.model.predict(oos_df)
 
     def save(self, path: str) -> None:
         '''
         Save the DataModeler so it can be re-used.
         '''
         # ** Your code here **
-        joblib.dump(self, path) # The recommended way of saving scikit-learn models
 
     @staticmethod
     def load(path: str) -> DataModeler:
@@ -141,7 +73,6 @@ class DataModeler:
         Reload the DataModeler from the saved state so it can be re-used.
         '''
         # ** Your code here **
-        return joblib.load(path)
 
 
 #################################################################################
